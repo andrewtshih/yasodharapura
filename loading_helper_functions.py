@@ -6,6 +6,8 @@ import psycopg
 def ingest_data(dataset_filename: str, dict_filename: str,
                 sheet_name: str, dict_columns: list, encoding='utf-8'):
 
+    """Read in dataset and data dictionary, and handle missing data."""
+    
     dataset_df = pd.read_csv(dataset_filename,
                              encoding=encoding)
 
@@ -18,6 +20,7 @@ def ingest_data(dataset_filename: str, dict_filename: str,
 
 
 def conn_cur(host: str, dbname: str, credentials_module):
+    """Create connection and cursor for SQL server."""
     conn = psycopg.connect(
         host=host,
         dbname=dbname,
@@ -36,6 +39,7 @@ def load_small_table_scorecard(cur, conn, small_table_name: str,
                                df_to_filter_var_val: str,
                                id_col: str, value_col: str,
                                small_tbl_id_col: str, small_tbl_val_col: str):
+    """Load data in to dim tables."""
     try:
         cur.execute(f"TRUNCATE TABLE {small_table_name} CASCADE")
         if small_table_name in ('preddegs', 'highdegs'):
