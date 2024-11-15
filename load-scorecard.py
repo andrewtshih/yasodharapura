@@ -55,12 +55,12 @@ with conn.transaction():
                                small_tbl_id_col='agency_id',
                                small_tbl_val_col='accred_agency')
 
-    # institutions_non_static
+    # The institutions_non_static table is constructed very differently,
+    # so values are inserted without using a helper function.
     try:
         cur.execute("SELECT * FROM accred_agencies")
         accred_agencies_mapping = {row[1]: row[0] for row in cur.fetchall()}
 
-        cur.execute("TRUNCATE TABLE institutions_non_static CASCADE")
         cur.executemany("""
             INSERT INTO institutions_non_static (unit_id,
                         year,
@@ -80,8 +80,9 @@ with conn.transaction():
                         actcm75)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s,
                     %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (unit_id, year) DO NOTHING
             """, [
-                (None,
+                (row['UNITID'],
                     str(dataset_filename[9:13] + "-" +
                         dataset_filename[14:16]),
                     accred_agencies_mapping.get(row['ACCREDAGENCY'], None),
@@ -123,7 +124,8 @@ with conn.transaction():
         num_rows_inserted += len(col_scor_df)
 
 conn.commit()
-print("Number of rows inserted into tables", num_rows_inserted)
+print("Number of rows inserted into institutions_non_static:",
+      num_rows_inserted)
 
 cur.close()
 conn.close()

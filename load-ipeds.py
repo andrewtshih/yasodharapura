@@ -27,7 +27,6 @@ num_rows_inserted = 0
 # make a new transaction
 with conn.transaction():
 
-    # controls
     load_small_table_ipeds(cur, conn,
                            small_table_name='controls',
                            df_to_filter=ipeds_dict_df,
@@ -131,12 +130,15 @@ with conn.transaction():
                            small_tbl_id_col='cc_szset_id',
                            small_tbl_val_col='cc_szset')
 
-    # cities
+    # The cities table is constructed very differently,
+    # so values are inserted without using a helper function.
     try:
+        # cur.execute("TRUNCATE TABLE cities")
         cities = ipeds_df[['CITY', 'STABBR']].drop_duplicates().reset_index()
         cur.executemany("""
                         INSERT INTO cities (city_id, city, stabbr)
                         VALUES (%s, %s, %s)
+                        ON CONFLICT (city_id) DO NOTHING
                         """,
                         [(i + 1, row['CITY'], row['STABBR']) for i,
                          row in cities.iterrows()])
@@ -147,59 +149,96 @@ with conn.transaction():
         print("An error has occurred:", e)
         conn.rollback()
 
-    # institutions_static
+    # The institutions_static table is constructed very differently,
+    # so values are inserted without using a helper function.
     try:
         cur.execute("SELECT * FROM cities")
         cities_mapping = {(row[1], row[2]): row[0] for row in cur.fetchall()}
 
-        cur.execute("TRUNCATE TABLE institutions_static CASCADE")
-        cur.executemany("""
-            INSERT INTO institutions_static (unit_id,
-                        instnm,
-                        addr,
-                        city_id,
-                        zip,
-                        county_cd,
-                        cbsa,
-                        cbsa_type,
-                        csa,
-                        region_id,
-                        latitude,
-                        longitude,
-                        control_id,
-                        c21basic_id,
-                        c21ipug_id,
-                        c21ipgrd_id,
-                        c21ugprf_id,
-                        c21enprf_id,
-                        c21szset_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, [
-                (row['UNITID'],
-                    row['INSTNM'],
-                    row['ADDR'],
-                    cities_mapping.get((row['CITY'], row['STABBR']), None),
-                    row['ZIP'],
-                    row['COUNTYCD'],
-                    row['CBSA'],
-                    row['CBSATYPE'],
-                    row['CSA'],
-                    row['OBEREG'],
-                    row['LATITUDE'],
-                    row['LONGITUD'],
-                    row['CONTROL'],
-                    row['C21BASIC'],
-                    row['C21IPUG'],
-                    row['C21IPGRD'],
-                    row['C21UGPRF'],
-                    row['C21ENPRF'],
-                    row['C21SZSET']) for i,
-                row in ipeds_df.iterrows()
-                ]
-        )
-        print("institutions_static now contains data from",
-              dataset_filename[9:13], "-", dataset_filename[14:16])
+        # cur.execute("TRUNCATE TABLE institutions_static CASCADE")
+        if int(dataset_filename[5:9]) >= 2021:
+            cur.executemany("""
+                INSERT INTO institutions_static (unit_id,
+                            instnm,
+                            addr,
+                            city_id,
+                            zip,
+                            county_cd,
+                            cbsa,
+                            cbsa_type,
+                            csa,
+                            region_id,
+                            latitude,
+                            longitude,
+                            control_id,
+                            c21basic_id,
+                            c21ipug_id,
+                            c21ipgrd_id,
+                            c21ugprf_id,
+                            c21enprf_id,
+                            c21szset_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (unit_id) DO NOTHING
+                """, [
+                    (row['UNITID'],
+                        row['INSTNM'],
+                        row['ADDR'],
+                        cities_mapping.get((row['CITY'], row['STABBR']), None),
+                        row['ZIP'],
+                        row['COUNTYCD'],
+                        row['CBSA'],
+                        row['CBSATYPE'],
+                        row['CSA'],
+                        row['OBEREG'],
+                        row['LATITUDE'],
+                        row['LONGITUD'],
+                        row['CONTROL'],
+                        row['C21BASIC'],
+                        row['C21IPUG'],
+                        row['C21IPGRD'],
+                        row['C21UGPRF'],
+                        row['C21ENPRF'],
+                        row['C21SZSET']) for i,
+                    row in ipeds_df.iterrows()
+                    ]
+            )
+        else:
+            cur.executemany("""
+                INSERT INTO institutions_static (unit_id,
+                            instnm,
+                            addr,
+                            city_id,
+                            zip,
+                            county_cd,
+                            cbsa,
+                            cbsa_type,
+                            csa,
+                            region_id,
+                            latitude,
+                            longitude,
+                            control_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s)
+                ON CONFLICT (unit_id) DO NOTHING
+                """, [
+                    (row['UNITID'],
+                        row['INSTNM'],
+                        row['ADDR'],
+                        cities_mapping.get((row['CITY'], row['STABBR']), None),
+                        row['ZIP'],
+                        row['COUNTYCD'],
+                        row['CBSA'],
+                        row['CBSATYPE'],
+                        row['CSA'],
+                        row['OBEREG'],
+                        row['LATITUDE'],
+                        row['LONGITUD'],
+                        row['CONTROL']) for i,
+                    row in ipeds_df.iterrows()
+                    ]
+            )
+            print("2021 Carnegie Classifcation variables do not yet exist.")
     except psycopg.errors.ForeignKeyViolation as e:
         print("""An entry has a unit_id that doesn't
             exist in the static table:""", e)
@@ -220,7 +259,8 @@ with conn.transaction():
         num_rows_inserted += len(ipeds_df)
 
 conn.commit()
-print("Number of rows inserted into tables", num_rows_inserted)
+print("Number of rows inserted into institutions_static:",
+      num_rows_inserted)
 
 cur.close()
 conn.close()
