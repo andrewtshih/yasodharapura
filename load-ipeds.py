@@ -1,26 +1,26 @@
 import sys
-import pandas as pd
 import psycopg
 import credentials_proj
+from loading_helper_functions import (ingest_data, conn_cur,
+                                      load_small_table_ipeds)
 
-filename = sys.argv[1]
+dataset_filename = sys.argv[1]
+dict_filename = 'ipeds_dict.xlsx'
+sheet_name = "Frequencies"
+dict_columns = ["varname", "codevalue", "valuelabel"]
+encoding = 'unicode_escape'
 
-# load the actual dataset passed in as a command argument as a csv
-ipeds_df = pd.read_csv(filename, encoding='unicode_escape')
-# load the ipeds data dictionary
-ipeds_dict_df = pd.read_excel('ipeds_dict.xlsx', sheet_name="Frequencies")[["varname", "codevalue", "valuelabel"]]
+ipeds_df, ipeds_dict_df = ingest_data(dataset_filename, dict_filename,
+                                      sheet_name, dict_columns,
+                                      encoding=encoding)
 
-# # conversions
-# zips = ipeds_df['ZIP'].str.slice(0, 5)
+ipeds_df['ZIP'] = ipeds_df['ZIP'].str.slice(0, 5)
 
-conn = psycopg.connect(
-    host="pinniped.postgres.database.azure.com",
-    dbname="atshih",
-    user=credentials_proj.DB_USER,
-    password=credentials_proj.DB_PASSWORD
-)
+host = "pinniped.postgres.database.azure.com"
+dbname = "atshih"
+credentials_module = credentials_proj
 
-cur = conn.cursor()
+conn, cur = conn_cur(host, dbname, credentials_module)
 
 num_rows_inserted = 0
 
@@ -28,125 +28,199 @@ num_rows_inserted = 0
 with conn.transaction():
 
     # controls
-    cur.execute("SELECT COUNT(*) FROM controls")
-    if cur.fetchone()[0] == 0:
-        try:
-            controls = ipeds_dict_df[ipeds_dict_df['varname'] == 'CONTROL']
-            cur.executemany("""
-                            INSERT INTO controls (control_id, control)
-                            VALUES (%s, %s)
-                            """,
-                            [(row['codevalue'],  None) if row['codevalue'] == "-3" else
-                                (row['codevalue'], row['valuelabel']) for i, row in controls.iterrows()])
-        except psycopg.errors.UniqueViolation as e:
-            print("Attempted to insert a duplicate key value:", e)
-            conn.rollback()
-    else:
-        print("Data already loaded in controls table.")
+    load_small_table_ipeds(cur, conn,
+                           small_table_name='controls',
+                           df_to_filter=ipeds_dict_df,
+                           df_to_filter_var_name='varname',
+                           df_to_filter_var_val='CONTROL',
+                           id_col='codevalue',
+                           value_col='valuelabel',
+                           null_exists=True,
+                           null_condition='-3',
+                           small_tbl_id_col='control_id',
+                           small_tbl_val_col='control')
 
     # regions
-    cur.execute("SELECT COUNT(*) FROM regions")
-    if cur.fetchone()[0] == 0:
-        try:
-            regions = ipeds_dict_df[ipeds_dict_df['varname'] == 'OBERREG']
-            cur.executemany("""
-                            INSERT INTO regions (region_id, region)
-                            VALUES (%s, %s)
-                            """,
-                            [(row['codevalue'], row['valuelabel']) for i, row in regions.iterrows()])
-        except psycopg.errors.UniqueViolation as e:
-            print("Attempted to insert a duplicate key value:", e)
-            conn.rollback()
-    else:
-        print("Data already loaded in regions table.")
+    load_small_table_ipeds(cur, conn,
+                           small_table_name='regions',
+                           df_to_filter=ipeds_dict_df,
+                           df_to_filter_var_name='varname',
+                           df_to_filter_var_val='OBEREG',
+                           id_col='codevalue',
+                           value_col='valuelabel',
+                           null_exists=False,
+                           null_condition='',
+                           small_tbl_id_col='region_id',
+                           small_tbl_val_col='region')
 
     # ccs_basic
-    cur.execute("SELECT COUNT(*) FROM ccs_basic")
-    if cur.fetchone()[0] == 0:
-        try:
-            ccs_basic = ipeds_dict_df[ipeds_dict_df['varname'] == 'C21BASIC']
-            cur.executemany("""
-                            INSERT INTO ccs_basic (cc_basic_id, cc_basic)
-                            VALUES (%s, %s)
-                            """,
-                            [(row['codevalue'],  None) if row['codevalue'] == "-2" else
-                                (row['codevalue'], row['valuelabel']) for i, row in ccs_basic.iterrows()])
-        except psycopg.errors.UniqueViolation as e:
-            print("Attempted to insert a duplicate key value:", e)
-            conn.rollback()
-    else:
-        print("Data already loaded in ccs_basic table.")
+    load_small_table_ipeds(cur, conn,
+                           small_table_name='ccs_basic',
+                           df_to_filter=ipeds_dict_df,
+                           df_to_filter_var_name='varname',
+                           df_to_filter_var_val='C21BASIC',
+                           id_col='codevalue',
+                           value_col='valuelabel',
+                           null_exists=True,
+                           null_condition='-2',
+                           small_tbl_id_col='cc_basic_id',
+                           small_tbl_val_col='cc_basic')
+
+    # ccs_ipug
+    load_small_table_ipeds(cur, conn,
+                           small_table_name='ccs_ipug',
+                           df_to_filter=ipeds_dict_df,
+                           df_to_filter_var_name='varname',
+                           df_to_filter_var_val='C21IPUG',
+                           id_col='codevalue',
+                           value_col='valuelabel',
+                           null_exists=True,
+                           null_condition='-2',
+                           small_tbl_id_col='cc_ipug_id',
+                           small_tbl_val_col='cc_ipug')
+
+    # ccs_ipgrd
+    load_small_table_ipeds(cur, conn,
+                           small_table_name='ccs_ipgrd',
+                           df_to_filter=ipeds_dict_df,
+                           df_to_filter_var_name='varname',
+                           df_to_filter_var_val='C21IPGRD',
+                           id_col='codevalue',
+                           value_col='valuelabel',
+                           null_exists=True,
+                           null_condition='-2',
+                           small_tbl_id_col='cc_ipgrd_id',
+                           small_tbl_val_col='cc_ipgrd')
+
+    # ccs_ugprf
+    load_small_table_ipeds(cur, conn,
+                           small_table_name='ccs_ugprf',
+                           df_to_filter=ipeds_dict_df,
+                           df_to_filter_var_name='varname',
+                           df_to_filter_var_val='C21UGPRF',
+                           id_col='codevalue',
+                           value_col='valuelabel',
+                           null_exists=True,
+                           null_condition='-2',
+                           small_tbl_id_col='cc_ugprf_id',
+                           small_tbl_val_col='cc_ugprf')
+
+    # ccs_enprf
+    load_small_table_ipeds(cur, conn,
+                           small_table_name='ccs_enprf',
+                           df_to_filter=ipeds_dict_df,
+                           df_to_filter_var_name='varname',
+                           df_to_filter_var_val='C21ENPRF',
+                           id_col='codevalue',
+                           value_col='valuelabel',
+                           null_exists=True,
+                           null_condition='-2',
+                           small_tbl_id_col='cc_enprf_id',
+                           small_tbl_val_col='cc_enprf')
+
+    # ccs_szset
+    load_small_table_ipeds(cur, conn,
+                           small_table_name='ccs_szset',
+                           df_to_filter=ipeds_dict_df,
+                           df_to_filter_var_name='varname',
+                           df_to_filter_var_val='C21SZSET',
+                           id_col='codevalue',
+                           value_col='valuelabel',
+                           null_exists=True,
+                           null_condition='-2',
+                           small_tbl_id_col='cc_szset_id',
+                           small_tbl_val_col='cc_szset')
+
+    # cities
+    try:
+        cities = ipeds_df[['CITY', 'STABBR']].drop_duplicates().reset_index()
+        cur.executemany("""
+                        INSERT INTO cities (city_id, city, stabbr)
+                        VALUES (%s, %s, %s)
+                        """,
+                        [(i + 1, row['CITY'], row['STABBR']) for i,
+                         row in cities.iterrows()])
+    except psycopg.errors.UniqueViolation as e:
+        print("Attempted to insert a duplicate key value:", e)
+        conn.rollback()
+    except Exception as e:
+        print("An error has occurred:", e)
+        conn.rollback()
 
     # institutions_static
-    # cur.execute("SELECT COUNT(*) FROM institutions_static")
-    # if cur.fetchone()[0] == 0:
-    #     try:
-    #         cur.executemany("""
-    #                         INSERT INTO institutions_static (
-    #                         unit_id, instnm, addr, city_id, zip,
-    #                         county_cd, cbsa_id, region_id, latitude, longitude, control_id,
-    #                         c21basic_id, c21ipug_id, c21ipgrd_id,
-    #                         c21ugprf_id, c21enprf_id, c21szset_id)
-    #                         VALUES (%s, %s, %s, %s, %s,
-    #                         %s, %s, %s, %s, %s, %s,
-    #                         %s, %s, %s,
-    #                         %s, %s, %s)
-    #                     """,
-    #                     [(row['UNITID'], row['INSTNM'], row['ADDR'], ) for i, row in ipeds_df.iterrows()])
-    #     except Exception as e:
-    #         print()
+    try:
+        cur.execute("SELECT * FROM cities")
+        cities_mapping = {(row[1], row[2]): row[0] for row in cur.fetchall()}
 
-    # try:
-    #     cities = ipeds_df[['CITY', 'STABBR']].drop_duplicates()
-    #     cur.executemany("""
-    #                     INSERT INTO cities (city_id, city, stabbr)
-    #                     VALUES (%s, %s, %s)
-    #                     """,
-    #                     [(i + 1, row['CITY'], row['STABBR']) for i, row in cities.iterrows()])
-    # except Exception as e:
-    #     # if an exception/error happens in this block, Postgres goes back
-    #     # to
-    #     # the last savepoint upon exiting the `with` block
-    #     print("insert failed:" + str(e))
-    #     # add additional logging, error handling here
-    #     conn.rollback()
+        cur.execute("TRUNCATE TABLE institutions_static CASCADE")
+        cur.executemany("""
+            INSERT INTO institutions_static (unit_id,
+                        instnm,
+                        addr,
+                        city_id,
+                        zip,
+                        county_cd,
+                        cbsa,
+                        cbsa_type,
+                        csa,
+                        region_id,
+                        latitude,
+                        longitude,
+                        control_id,
+                        c21basic_id,
+                        c21ipug_id,
+                        c21ipgrd_id,
+                        c21ugprf_id,
+                        c21enprf_id,
+                        c21szset_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, [
+                (row['UNITID'],
+                    row['INSTNM'],
+                    row['ADDR'],
+                    cities_mapping.get((row['CITY'], row['STABBR']), None),
+                    row['ZIP'],
+                    row['COUNTYCD'],
+                    row['CBSA'],
+                    row['CBSATYPE'],
+                    row['CSA'],
+                    row['OBEREG'],
+                    row['LATITUDE'],
+                    row['LONGITUD'],
+                    row['CONTROL'],
+                    row['C21BASIC'],
+                    row['C21IPUG'],
+                    row['C21IPGRD'],
+                    row['C21UGPRF'],
+                    row['C21ENPRF'],
+                    row['C21SZSET']) for i,
+                row in ipeds_df.iterrows()
+                ]
+        )
+        print("institutions_static now contains data from",
+              dataset_filename[9:13], "-", dataset_filename[14:16])
+    except psycopg.errors.ForeignKeyViolation as e:
+        print("""An entry has a unit_id that doesn't
+            exist in the static table:""", e)
+        conn.rollback()
+    except psycopg.errors.UniqueViolation as e:
+        print("Attempted to insert a duplicate key value:", e)
+        conn.rollback()
+    except psycopg.errors.CheckViolation as e:
+        print("A new row violates a check constraint:", e)
+        conn.rollback()
+    except psycopg.errors.NumericValueOutOfRange as e:
+        print("An integer passed in is out of range:", e)
+        conn.rollback()
+    except Exception as e:
+        print("An error has occurred:", e)
+        conn.rollback()
+    else:
+        num_rows_inserted += len(ipeds_df)
 
-    # else:
-    #     # no exception happened, so we continue without reverting the
-    #     # savepoint
-    #     num_rows_inserted += len(ipeds_df)
-
-# now we commit the entire transaction
 conn.commit()
 print("Number of rows inserted into tables", num_rows_inserted)
-
-# try:
-#     cur.execute("""
-#                 INSERT INTO institutions_static (unit_id,
-#                     agency_id,
-#                     preddeg_id,
-#                     highdeg_id,
-#                     control_id,
-#                     region_id INT REFERENCES regions (region_id),
-#                     instnm TEXT,
-#                     addr TEXT,
-#                     city_id INT REFERENCES cities (city_id),
-#                     zip INT check (length(TEXT(zip)) = 5),
-#                     c21basic_id INT REFERENCES ccs_basic (cc_basic_id),
-#                     c21ipug_id INT REFERENCES ccs_ipug (cc_ipug_id),
-#                     c21ipgrd_id INT REFERENCES ccs_ipgrd (cc_ipgrd_id),
-#                     c21ugprf_id INT REFERENCES ccs_ugprf (cc_ugprf_id),
-#                     c21enprf_id INT REFERENCES ccs_enprf (cc_enprf_id),
-#                     c21szset_id INT REFERENCES ccs_szset (cc_szset_id),
-#                     cbsa_id INT REFERENCES cbsas (cbsa_id),
-#                     county_cd INT,
-#                     latitude FLOAT,
-#                     longitude)
-#                 VALUES (1001, '2014-11-04 09:57:50.516228', 100, 29385, 722,
-#                     2, 485.200012, 'B', '')
-#                 """)
-# except psycopg.errors.ForeignKeyViolation as e:
-#     print("Foreign key constraint violation:", e)
 
 cur.close()
 conn.close()
