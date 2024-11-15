@@ -1,4 +1,4 @@
-# Yasodharapura
+# Yasodharapura –– Instructions and Notes
 This repository contains Team Yasodharapura's code for the Data Pipeline Knowledge Transfer Project (36-614 &amp; 36-611).
 
 At this stage, we have created two Python code scripts for loading the necessary data into our designed tables. (We are working with the College Scorecards data.) The first Python script, named "load-ipeds.py", contains code for loading data from the Integrated Postsecondary Education Data System (IPEDS); the second script, named "load-scorecard.py", contains code for loading data from the College Scorecard data files.
