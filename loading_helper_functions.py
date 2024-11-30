@@ -38,7 +38,8 @@ def load_small_table_scorecard(cur, conn, small_table_name: str,
                                id_col: str, value_col: str,
                                small_tbl_id_col: str, small_tbl_val_col: str):
     """
-    Load College Scorecard data in to dim tables.
+    Load College Scorecard data in to dim tables. The data can either come from
+    the actual data from the U.S. DOE or from the data dictionary.
 
     Parameters
     ----------
@@ -74,7 +75,8 @@ def load_small_table_scorecard(cur, conn, small_table_name: str,
             f"""INSERT INTO {small_table_name} ({small_tbl_id_col},
                 {small_tbl_val_col})
                 VALUES (%s, %s)
-                ON CONFLICT ({small_tbl_id_col}) DO NOTHING""",
+                ON CONFLICT ({small_tbl_id_col}) DO UPDATE
+                    SET {small_tbl_val_col} = EXCLUDED.{small_tbl_val_col}""",
             to_insert
         )
     except psycopg.errors.UniqueViolation as e:
@@ -93,7 +95,8 @@ def load_small_table_ipeds(cur, conn, small_table_name: str,
                            null_exists: bool, null_condition: str,
                            small_tbl_id_col: str, small_tbl_val_col: str):
     """
-    Load IPEDS data in to dim tables.
+    Load IPEDS data in to dim tables. The data can either come from
+    the actual data from the U.S. DOE or from the data dictionary.
 
     Parameters
     ----------
@@ -113,7 +116,6 @@ def load_small_table_ipeds(cur, conn, small_table_name: str,
     """
 
     try:
-        # cur.execute(f"TRUNCATE TABLE {small_table_name}")
         filtered_df = (df_to_filter[df_to_filter[df_to_filter_var_name]
                                     == df_to_filter_var_val])
         if null_exists:
@@ -130,7 +132,8 @@ def load_small_table_ipeds(cur, conn, small_table_name: str,
             f"""INSERT INTO {small_table_name} ({small_tbl_id_col},
                 {small_tbl_val_col})
                 VALUES (%s, %s)
-                ON CONFLICT ({small_tbl_id_col}) DO NOTHING""",
+                ON CONFLICT ({small_tbl_id_col}) DO UPDATE
+                    SET {small_tbl_val_col} = EXCLUDED.{small_tbl_val_col}""",
             to_insert
         )
     except psycopg.errors.UniqueViolation as e:
