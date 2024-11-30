@@ -174,7 +174,7 @@ with conn.transaction():
 
         for i, row in ipeds_df.iterrows():
             current_row_index = i
-            print("Inserting row " + str(current_row_index + 1))
+            print("Loading row " + str(current_row_index + 1))
             cur.executemany("""
                 INSERT INTO institutions_static (unit_id,
                             instnm,

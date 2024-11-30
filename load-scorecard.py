@@ -75,6 +75,7 @@ with conn.transaction():
 
         for i, row in col_scor_df.iterrows():
             current_row_index = i
+            print("Loading row " + str(current_row_index + 1))
             cur.executemany("""
                 INSERT INTO institutions_non_static (unit_id,
                             year,
