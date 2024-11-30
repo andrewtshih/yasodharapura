@@ -95,25 +95,7 @@ with conn.transaction():
                             actcm75)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s,
                         %s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (unit_id, year) DO NOTHING """
-                        #     UPDATE
-                        # SET year = EXCLUDED.year,
-                        #     agency_id = EXCLUDED.agency_id,
-                        #     preddeg_id = EXCLUDED.preddeg_id,
-                        #     highdeg_id = EXCLUDED.highdeg_id,
-                        #     adm_rate = EXCLUDED.adm_rate,
-                        #     tuitionfee_in = EXCLUDED.tuitionfee_in,
-                        #     tuitionfee_out = EXCLUDED.tuitionfee_out,
-                        #     tuitionfee_prog = EXCLUDED.tuitionfee_prog,
-                        #     tuitfte = EXCLUDED.tuitfte,
-                        #     avgfacsal = EXCLUDED.avgfacsal,
-                        #     cdr2 = EXCLUDED.cdr2,
-                        #     cdr3 = EXCLUDED.cdr3,
-                        #     actcmmid = EXCLUDED.actcmmid,
-                        #     actcm25 = EXCLUDED.actcm25,
-                        #     actcm75 = EXCLUDED.actcm75
-                # """
-                , [
+                ON CONFLICT (unit_id, year) DO NOTHING """, [
                     (row['UNITID'],
                         str(dataset_filename[9:13] + "-" +
                             dataset_filename[14:16]),
