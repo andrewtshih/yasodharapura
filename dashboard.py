@@ -49,9 +49,9 @@ else:
     line_inst_fact = "WHERE control_id == " + inst_dict[line_inst]
 
 
-states = conn.query("""SELECT UNIQUE STABBR
+states = conn.query("""SELECT UNIQUE stabbr
                     FROM cities
-                    ORDER BY STABBR DESC""")
+                    ORDER BY stabbr DESC""")
 states.append("All")
 line_state = st.selectbox(
     "State",
@@ -60,7 +60,7 @@ line_state = st.selectbox(
 if line_state == "All":
     line_state_fact = ""
 else:
-    line_state_fact = ", STABBR == " + line_state
+    line_state_fact = ", stabbr == " + line_state
 
 
 line_factor = st.selectbox(
@@ -92,3 +92,90 @@ line_df = conn.query("""SELECT year AS Year,
 
 
 st.line_chart(line_df)
+
+
+"Summary statistics"
+
+
+aggr_year = st.selectbox(
+    "Year",
+    ("2019", "2020", "2021", "2022")
+)
+
+
+aggr_state = st.selectbox(
+    "State",
+    ("No", "Yes")
+)
+if aggr_state == "No":
+    aggr_state_fact1 = ""
+    aggr_state_fact2 = ""
+    aggr_state_fact3 = ""
+else:
+    aggr_state_fact1 = "stabbr AS State,"
+    aggr_state_fact2 = ", stabbr"
+    aggr_state_fact3 = ", stabbr DESC"
+
+
+aggr_inst = st.selectbox(
+    "Institution type",
+    ("No", "Yes")
+)
+if aggr_inst == "No":
+    aggr_inst_fact1 = ""
+    aggr_inst_fact2 = ""
+    aggr_inst_fact3 = ""
+else:
+    aggr_inst_fact1 = "control AS InstitutionType,"
+    aggr_inst_fact2 = ", control"
+    aggr_inst_fact3 = ", control DESC"
+
+
+aggr_cc = st.selectbox(
+    "Carnegie classification",
+    ("No", "Yes")
+)
+if aggr_cc == "No":
+    aggr_cc_fact1 = ""
+    aggr_cc_fact2 = ""
+    aggr_cc_fact3 = ""
+else:
+    aggr_cc_fact1 = "cc_basic AS CarnegieClassification,"
+    aggr_cc_fact2 = ", cc_basic"
+    aggr_cc_fact3 = ", cc_basic DESC"
+
+
+aggr_accr = st.selectbox(
+    "Accreditation agency",
+    ("No", "Yes")
+)
+if aggr_accr == "No":
+    aggr_accr_fact1 = ""
+    aggr_accr_fact2 = ""
+    aggr_accr_fact3 = ""
+else:
+    aggr_accr_fact1 = "accred_agency AS AccreditationAgency,"
+    aggr_accr_fact2 = ", accred_agency"
+    aggr_accr_fact3 = ", accred_agency DESC"
+
+
+aggr_df = conn.query("""SELECT year as Year,
+                     """ + aggr_state_fact1 + aggr_inst_fact1 + aggr_cc_fact1 + aggr_accr_fact1 """
+                     COUNT(year) AS Count,
+                     AVG(tuitfte) AS AvgTuition,
+                     AVG(actcmmid) AS AvgACT
+                     FROM institutions_static
+                     INNER JOIN institutions_non_static ON
+                     institutions_static.unit_id = institutions_non_static.unit_id
+                     INNER JOIN cities ON
+                     institutions_static.city_id = cities.city_id
+                     INNER JOIN controls ON
+                     institutions_static.control_id = controls.control_id
+                     INNER JOIN ccs_basic ON
+                     institutions_static.cc_basic_id = ccs_basic.cc_basic_id
+                     INNER JOIN accred_agencies ON
+                     institutions_non_static.agency_id = accred_agencies.agency_id
+                     WHERE year == """ + aggr_year + """
+                     GROUP BY year
+                     """ + aggr_state_fact2 + aggr_inst_fact2 + aggr_cc_fact2 + aggr_accr_fact2 """
+                     ORDER BY year""" + aggr_state_fact3 + aggr_inst_fact3 + aggr_cc_fact3 + aggr_accr_fact3)
