@@ -1,13 +1,31 @@
 import streamlit as st
+import psycopg
+import pandas as pd
+import credentials_proj
+from loading_helper_functions import conn_cur
 
 
-st.title("College statistics dashboard")
+st.title("College Scorecard Dashboard")
 
 
-@st.cache_resource
-def get_conn(database):
-    return st.connection(database)
-conn = get_conn("your_connection")
+# @st.cache_resource
+# def get_conn(database):
+#     return st.connection(database)
+
+# conn = st.connection("sql")
+
+# conn = psycopg.connect(
+#     host="pinniped.postgres.database.azure.com",
+#     dbname=credentials_proj.dbname,
+#     user=credentials_proj.DB_USER,
+#     password=credentials_proj.DB_PASSWORD
+# )
+
+host = "pinniped.postgres.database.azure.com"
+dbname = credentials_proj.dbname
+credentials_module = credentials_proj
+
+conn, cur = conn_cur(host, dbname, credentials_module)
 
 
 "Institutions by loan repayment rates"
@@ -17,20 +35,27 @@ loan_qual = st.selectbox(
     "Sort by:",
     ("Highest", "Lowest")
 )
-loans_dict = {"Highest" : " DESC", "Lowest" : ""}
+loans_dict = {"Highest": " DESC", "Lowest": ""}
 
 
 loan_num = st.slider("Number to show", 1, 20, 10)
 
-
-loan_df = conn.query("""SELECT instnm AS Institution,
+cur.execute("""SELECT instnm AS Institution,
                      cdr2 AS Repayment
                      FROM institutions_static
                      INNER JOIN institutions_non_static ON
-                     institutions_static.unit_id = institutions_non_static.unit_id
+                     institutions_static.unit_id =
+                     institutions_non_static.unit_id
                      ORDER BY cdr2""" + loans_dict[loan_qual] + """
                      LIMIT """ + str(loan_num))
-loan_df
+
+results = cur.fetchall()
+
+loan_df = pd.DataFrame(results, columns=["Institution",
+                                         """Two-year cohort default
+                                         loan repayment rate"""])
+
+st.dataframe(loan_df)
 
 
 "Line graph of chosen statistic over time"
@@ -43,9 +68,9 @@ line_inst = st.selectbox(
 if line_inst == "All":
     line_inst_fact = "1, 2, 3"
 else:
-    inst_dict = {"Public" : "1",
-                 "Private not-for-profit" : "2",
-                 "Private for-profit" : "3"}
+    inst_dict = {"Public": "1",
+                 "Private not-for-profit": "2",
+                 "Private for-profit": "3"}
     line_inst_fact = "WHERE control_id == " + inst_dict[line_inst]
 
 
@@ -67,27 +92,30 @@ line_factor = st.selectbox(
     "Factor",
     ("Tuition rate", "Loan repayment rate", "Admission rate")
 )
-factor_dict = {"Tuition rate" : "tuitionfee_prog",
-               "Loan repayment rate" : "cdr2",
-               "Admission rate" : "adm_rate"}
+factor_dict = {"Tuition rate": "tuitionfee_prog",
+               "Loan repayment rate": "cdr2",
+               "Admission rate": "adm_rate"}
 
 
 line_aggr = st.selectbox(
     "Aggregation type",
     ("Count", "Average")
 )
-aggr_dict = {"Count" : "COUNT(",
-             "Average" : "AVG("}
+aggr_dict = {"Count": "COUNT(",
+             "Average": "AVG("}
 
 
 line_df = conn.query("""SELECT year AS Year,
-                     """ + aggr_dict[line_aggr] + factor_dict[line_factor] + ") AS " + line_factor + """
+                     """ + aggr_dict[line_aggr] + factor_dict[line_factor] +
+                     ") AS " + line_factor + """
                      FROM institutions_static
                      INNER JOIN institutions_non_static ON
-                     institutions_static.unit_id = institutions_non_static.unit_id
+                     institutions_static.unit_id =
+                     institutions_non_static.unit_id
                      INNER JOIN cities ON
                      institutions_static.city_id = cities.city_id
-                     WHERE control_id IN (""" + line_inst_fact + ")" + line_state_fact + """
+                     WHERE control_id IN (""" + line_inst_fact + ")" +
+                     line_state_fact + """
                      GROUP BY Year""")
 
 
@@ -160,13 +188,16 @@ else:
 
 
 aggr_df = conn.query("""SELECT year as Year,
-                     """ + aggr_state_fact1 + aggr_inst_fact1 + aggr_cc_fact1 + aggr_accr_fact1 """
+                     """ +
+                     aggr_state_fact1 + aggr_inst_fact1 + aggr_cc_fact1 +
+                     aggr_accr_fact1 + """
                      COUNT(year) AS Count,
                      AVG(tuitfte) AS AvgTuition,
                      AVG(actcmmid) AS AvgACT
                      FROM institutions_static
                      INNER JOIN institutions_non_static ON
-                     institutions_static.unit_id = institutions_non_static.unit_id
+                     institutions_static.unit_id =
+                        institutions_non_static.unit_id
                      INNER JOIN cities ON
                      institutions_static.city_id = cities.city_id
                      INNER JOIN controls ON
@@ -174,8 +205,15 @@ aggr_df = conn.query("""SELECT year as Year,
                      INNER JOIN ccs_basic ON
                      institutions_static.cc_basic_id = ccs_basic.cc_basic_id
                      INNER JOIN accred_agencies ON
-                     institutions_non_static.agency_id = accred_agencies.agency_id
-                     WHERE year == """ + aggr_year + """
+                     institutions_non_static.agency_id =
+                        accred_agencies.agency_id
+                     WHERE year = """ + aggr_year + """
                      GROUP BY year
-                     """ + aggr_state_fact2 + aggr_inst_fact2 + aggr_cc_fact2 + aggr_accr_fact2 """
-                     ORDER BY year""" + aggr_state_fact3 + aggr_inst_fact3 + aggr_cc_fact3 + aggr_accr_fact3)
+                     """ + aggr_state_fact2 + aggr_inst_fact2 + aggr_cc_fact2 +
+                     aggr_accr_fact2 + """
+                     ORDER BY year""" + aggr_state_fact3 + aggr_inst_fact3 +
+                     aggr_cc_fact3 + aggr_accr_fact3
+                     )
+
+cur.close()
+conn.close()
