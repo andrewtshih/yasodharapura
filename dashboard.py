@@ -28,7 +28,8 @@ credentials_module = credentials_proj
 conn, cur = conn_cur(host, dbname, credentials_module)
 
 
-"Institutions by loan repayment rates"
+st.header("Institutions ranked by loan repayment rates")
+"Ranks top or bottom institutions by 3-year default rate (lower number = better repayment). Number of institutions shown is chosen by slider."
 
 
 loan_qual = st.selectbox(
@@ -53,17 +54,18 @@ cur.execute("""SELECT instnm AS Institution,
 results = cur.fetchall()
 
 loan_df = pd.DataFrame(results, columns=["Institution",
-                                         "Two-year cohort default loan repayment rate"])
+                                         "Three-year cohort default loan repayment rate"])
 
 st.dataframe(loan_df)
 
 
-"Line graph of chosen statistic over time"
+st.header("Chosen rate over time")
+"Shows average rate from three available rates over every year of the data. Possible rates are tuition rate, loan repayment rate, and admission rate. Can narrow down by state or institution type."
 
 
 line_inst = st.selectbox(
     "Institution type",
-    ("Public", "Private not-for-profit", "Private for-profit", "All")
+    ("All", "Public", "Private not-for-profit", "Private for-profit")
 )
 if line_inst == "All":
     line_inst_fact = "1, 2, 3"
@@ -77,9 +79,10 @@ else:
 cur.execute("""SELECT DISTINCT stabbr
                     FROM cities
                     ORDER BY stabbr""")
-results = cur.fetchall()
+results = [i[0] for i in cur.fetchall()]
+results = ["All"] + results
 states = pd.DataFrame(results, columns=["State"])
-states.loc[50] = "All"
+# states.loc[50] = "All"
 line_state = st.selectbox(
     "State",
     states
@@ -87,7 +90,7 @@ line_state = st.selectbox(
 if line_state == "All":
     line_state_fact = ""
 else:
-    line_state_fact = " AND stabbr = '" + line_state
+    line_state_fact = " AND stabbr = '" + line_state + "'"
 
 
 line_factor = st.selectbox(
@@ -109,7 +112,7 @@ cur.execute("""SELECT year AS Year,
                      INNER JOIN cities ON
                      institutions_static.city_id = cities.city_id
                      WHERE control_id IN (""" + line_inst_fact + ")" +
-                     line_state_fact + """'
+                     line_state_fact + """
                      GROUP BY Year""")
 
 
@@ -121,7 +124,8 @@ line_df = pd.DataFrame(results, columns=["Year", line_factor])
 st.dataframe(line_df)
 
 
-"Summary statistics"
+st.header("Summary statistics")
+"Shows aggregate number of institutions, average tuition, and average median ACT score for a chosen year in the data. Can partition by any combination of state, institution type, Carnegie classification, or accreditation agency."
 
 
 aggr_year = st.selectbox(
