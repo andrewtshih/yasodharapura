@@ -165,62 +165,16 @@ with conn.transaction():
 
     # The institutions_static table is constructed very differently,
     # so values are inserted without using a helper function.
-    try:
-        cur.execute("SELECT * FROM cities")
-        cities_mapping = {(row[1], row[2]): row[0] for row in cur.fetchall()}
+    cur.execute("SELECT * FROM cities")
+    cities_mapping = {(row[1], row[2]): row[0] for row in cur.fetchall()}
 
-        # if int(dataset_filename[5:9]) >= 2021:
-        current_row_index = 0
-
-        for i, row in ipeds_df.iterrows():
-            current_row_index = i
-            print("Loading row " + str(current_row_index + 1))
-            cur.executemany("""
-                INSERT INTO institutions_static (unit_id,
-                            instnm,
-                            addr,
-                            city_id,
-                            zip,
-                            county_cd,
-                            cbsa,
-                            cbsa_type,
-                            csa,
-                            region_id,
-                            latitude,
-                            longitude,
-                            control_id,
-                            c21basic_id,
-                            c21ipug_id,
-                            c21ipgrd_id,
-                            c21ugprf_id,
-                            c21enprf_id,
-                            c21szset_id)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s,
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (unit_id) DO UPDATE
-                        SET instnm = EXCLUDED.instnm,
-                            addr = EXCLUDED.addr,
-                            city_id = EXCLUDED.city_id,
-                            zip = EXCLUDED.zip,
-                            county_cd = EXCLUDED.county_cd,
-                            cbsa = EXCLUDED.cbsa,
-                            cbsa_type = EXCLUDED.cbsa_type,
-                            csa = EXCLUDED.csa,
-                            region_id = EXCLUDED.region_id,
-                            latitude = EXCLUDED.latitude,
-                            longitude = EXCLUDED.longitude,
-                            control_id = EXCLUDED.control_id,
-                            c21basic_id = EXCLUDED.c21basic_id,
-                            c21ipug_id = EXCLUDED.c21ipug_id,
-                            c21ipgrd_id = EXCLUDED.c21ipgrd_id,
-                            c21ugprf_id = EXCLUDED.c21ugprf_id,
-                            c21enprf_id = EXCLUDED.c21enprf_id,
-                            c21szset_id = EXCLUDED.c21szset_id
-                """, [
-                    (row['UNITID'],
+    df_query = []
+    for i, row in ipeds_df.iterrows():
+        df_query.append([row['UNITID'],
                         row['INSTNM'],
                         row['ADDR'],
-                        cities_mapping.get((row['CITY'], row['STABBR']), None),
+                        cities_mapping.get((row['CITY'], row['STABBR']),
+                                           None),
                         row['ZIP'],
                         row['COUNTYCD'],
                         row['CBSA'],
@@ -235,62 +189,67 @@ with conn.transaction():
                         row['C21IPGRD'],
                         row['C21UGPRF'],
                         row['C21ENPRF'],
-                        row['C21SZSET'])]
-            )
-        # else:
-        #     cur.executemany("""
-        #         INSERT INTO institutions_static (unit_id,
-        #                     instnm,
-        #                     addr,
-        #                     city_id,
-        #                     zip,
-        #                     county_cd,
-        #                     cbsa,
-        #                     cbsa_type,
-        #                     csa,
-        #                     region_id,
-        #                     latitude,
-        #                     longitude,
-        #                     control_id)
-        #         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s,
-        #                 %s, %s, %s, %s)
-        #         ON CONFLICT (unit_id) DO UPDATE
-        #                 SET value = EXCLUDED.value
-        #         """, [
-        #             (row['UNITID'],
-        #                 row['INSTNM'],
-        #                 row['ADDR'],
-        #                 cities_mapping.get((row['CITY'], row['STABBR']),
-        #                      None),
-        #                 row['ZIP'],
-        #                 row['COUNTYCD'],
-        #                 row['CBSA'],
-        #                 row['CBSATYPE'],
-        #                 row['CSA'],
-        #                 row['OBEREG'],
-        #                 row['LATITUDE'],
-        #                 row['LONGITUD'],
-        #                 row['CONTROL']) for i,
-        #             row in ipeds_df.iterrows()
-        #             ]
-        # )
-        # print("2021 Carnegie Classifcation variables do not yet exist.")
+                        row['C21SZSET']])
+
+    try:
+        cur.executemany("""
+            INSERT INTO institutions_static (unit_id,
+                        instnm,
+                        addr,
+                        city_id,
+                        zip,
+                        county_cd,
+                        cbsa,
+                        cbsa_type,
+                        csa,
+                        region_id,
+                        latitude,
+                        longitude,
+                        control_id,
+                        c21basic_id,
+                        c21ipug_id,
+                        c21ipgrd_id,
+                        c21ugprf_id,
+                        c21enprf_id,
+                        c21szset_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (unit_id) DO UPDATE
+                    SET instnm = EXCLUDED.instnm,
+                        addr = EXCLUDED.addr,
+                        city_id = EXCLUDED.city_id,
+                        zip = EXCLUDED.zip,
+                        county_cd = EXCLUDED.county_cd,
+                        cbsa = EXCLUDED.cbsa,
+                        cbsa_type = EXCLUDED.cbsa_type,
+                        csa = EXCLUDED.csa,
+                        region_id = EXCLUDED.region_id,
+                        latitude = EXCLUDED.latitude,
+                        longitude = EXCLUDED.longitude,
+                        control_id = EXCLUDED.control_id,
+                        c21basic_id = EXCLUDED.c21basic_id,
+                        c21ipug_id = EXCLUDED.c21ipug_id,
+                        c21ipgrd_id = EXCLUDED.c21ipgrd_id,
+                        c21ugprf_id = EXCLUDED.c21ugprf_id,
+                        c21enprf_id = EXCLUDED.c21enprf_id,
+                        c21szset_id = EXCLUDED.c21szset_id
+            """, df_query)
     except psycopg.errors.ForeignKeyViolation as e:
-        print(f"""Row {current_row_index + 1} has a unit_id that doesn't
+        print(f"""Row {cur.rowcount + 1} has a unit_id that doesn't
             exist in the static table:""", e)
         conn.rollback()
     except psycopg.errors.UniqueViolation as e:
         print(f"""Attempted to insert a duplicate key value at
-              row {current_row_index + 1}:""", e)
+              row {cur.rowcount + 1}:""", e)
         conn.rollback()
     except psycopg.errors.CheckViolation as e:
-        print(f"Row {current_row_index + 1} violates a check constraint:", e)
+        print(f"Row {cur.rowcount + 1} violates a check constraint:", e)
         conn.rollback()
     except psycopg.errors.NumericValueOutOfRange as e:
-        print(f"An integer in row {current_row_index + 1} is out of range:", e)
+        print(f"An integer in row {cur.rowcount + 1} is out of range:", e)
         conn.rollback()
     except Exception as e:
-        print("An error has occurred:", e)
+        print(f"An error has occurred at row {cur.rowcount + 1}:", e)
         conn.rollback()
     else:
         num_rows_inserted += len(ipeds_df)
