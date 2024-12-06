@@ -5,7 +5,7 @@ To create the database, run the 2 code cells in order in the "yaso_schema_final.
 
 There are two Python code scripts for loading the necessary data into our designed tables (we are working with the College Scorecard data.) The first Python script, named "load-ipeds.py", contains code for loading data from the Integrated Postsecondary Education Data System (IPEDS); the second script, named "load-scorecard.py", contains code for loading data from the College Scorecard data files.
 
-Make sure to also download the appropriate CSV files containing the data to be loaded from the apt sources (U.S. DOE). They must be renamed such that College Scorecard data follows the format "col_scor_20XX_XX__PP.csv", and the IPEDS data follows the format "ipeds20XX.csv". 
+Make sure to also download the appropriate CSV files containing the data to be loaded from the apt sources (U.S. DOE). They must be renamed such that College Scorecard data follows the format "col_scor_20XX_XX__PP.csv", and the IPEDS data follows the format "ipeds20XX.csv". Put them in the same directory as the loading scripts.
 
 Before running either of these two Python scripts to load to the database, make sure to change the database name, username, and password of choice in the "credentials_proj.py" file, as both scripts use these information to access the database where the designed tables would be stored. Without changing the database, username, and/or password, the scripts would not be able to load the data to the correct database, so make sure that this is done before running them.
 
