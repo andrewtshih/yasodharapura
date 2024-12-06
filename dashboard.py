@@ -237,7 +237,7 @@ cur.execute("""SELECT year as Year,
                      aggr_state_fact1 + aggr_inst_fact1 + aggr_cc_fact1 +
                      """
                      COUNT(year) AS Count,
-                     ROUND(AVG(tuitfte), 2) AS "AvgTuition",
+                     CAST(AVG(tuitfte) as money) AS "AvgTuition",
                      ROUND(CAST(AVG(actcmmid) as numeric), 1) AS AvgACT
                      FROM institutions_static
                      INNER JOIN institutions_non_static ON
