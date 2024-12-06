@@ -274,7 +274,8 @@ aggr_df = pd.DataFrame(results, columns=cols)
 st.dataframe(aggr_df, hide_index=True)
 
 st.header("Number of institutions by accreditation agency in 2021-22")
-"""The bar chart below shows what agencies accredit the most institutions.
+"""Institutions' accreditation agencies only started being recorded in 2021-22.
+The bar chart below shows what agencies accredit the most institutions.
 Only agencies that accredit over 75 institutions are included.
 Over 16% of institutions in the U.S. are not accredited."""
 
@@ -305,8 +306,9 @@ ax.pie(acc_df["Count"], labels=acc_df["Accreditation Agency"],
 ax.axis("equal")
 st.pyplot(fig)
 
-st.header("New institutions")
-"The table below shows what institutions are new to the dataset that year."
+st.header("Unrecorded institutions in the present year")
+"""The table below shows what institutions were not present in the dataset 
+the year preceding the one selected below."""
 
 new_year = st.selectbox(
     "Choose Year",

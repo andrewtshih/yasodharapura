@@ -18,3 +18,5 @@ The scripts can be run in any order. For the "institutions_static" table, if ano
 Some variable names in the institutions_static table might be ambiguous, namely the Carnegie Classfication variable names. A more elaborate description of what those variables represent can be found in the "ipeds_dict.xlsx" file under the "Description" tab. 
 
 Finally, note that schools in the College Scorecard data are only labeled by the agencies by which they were accredited starting in the 2021-2022 school year, meaning that the "accredited agency" variable would consist of null values in the preceding years.
+
+To run the interactive Streamlit dashboard, which contains a selection of interesting analytics that one may find interesting, run the following command in the terminal: "streamlit run dashboard.py". 
