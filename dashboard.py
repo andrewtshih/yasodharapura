@@ -305,5 +305,47 @@ ax.pie(acc_df["Count"], labels=acc_df["Accreditation Agency"],
 ax.axis("equal")
 st.pyplot(fig)
 
+st.header("New institutions")
+"The table below shows what institutions are new to the dataset that year."
+
+new_year = st.selectbox(
+    "Choose Year",
+    ("2019-20", "2020-21", "2021-22")
+)
+new_dict = {"2019-20": "2018-19",
+            "2020-21": "2019-20",
+            "2021-22": "2020-21"}
+
+cur.execute("""SELECT a.year,
+            a.instnm,
+            a.city,
+            a.stabbr
+            FROM (SELECT i.instnm,
+                c.city,
+                c.stabbr,
+                i.unit_id,
+                n.year
+                FROM institutions_static AS i
+                INNER JOIN institutions_non_static AS n ON
+                i.unit_id = n.unit_id
+                INNER JOIN cities AS c ON
+                i.city_id = c.city_id
+                WHERE n.year = '""" + new_year + """') AS a
+            LEFT JOIN (SELECT unit_id
+                FROM institutions_non_static AS n
+                WHERE year = '""" + new_dict[new_year] + """') AS b
+                ON a.unit_id = b.unit_id
+            WHERE b.unit_id IS NULL""")
+
+results = cur.fetchall()
+
+new_df = pd.DataFrame(results,
+                      columns=["Year",
+                               "Institution Name",
+                               "City",
+                               "State"])
+
+st.dataframe(new_df, hide_index=True)
+
 cur.close()
 conn.close()
